@@ -4,6 +4,8 @@
 
 Track the main Codex 5-hour and weekly subscription limits in the PowerToys Command Palette Dock. The ring gauges turn amber at 80% and red at 95%. Click a gauge for the reset time and the age of the latest reading.
 
+![Codex gauges in the Dock and the details panel with limits and reset times](docs/screenshots/cover.png)
+
 ## Install on Windows
 
 You need PowerToys with Command Palette and its Dock enabled, plus a local Codex installation that records subscription limits.
