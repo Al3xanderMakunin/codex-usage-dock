@@ -15,11 +15,13 @@ After installation, reload Command Palette or restart PowerToys. Right-click the
 
 ## How it works
 
-Every 30 seconds the extension checks local `rollout-*.jsonl` files under `%USERPROFILE%\.codex\sessions` or `%CODEX_HOME%\sessions`. It uses the newest main Codex quota reading in `token_count` events from session files modified in the last eight days. It identifies the two windows by their duration and shows whichever are available.
+Every 30 seconds the extension checks local `rollout-*.jsonl` files. By default it looks under `%USERPROFILE%\.codex\sessions`. It uses the newest main Codex quota reading in `token_count` events from session files modified in the last eight days. It identifies the two windows by their duration and shows whichever are available.
 
 The Dock marks readings older than one hour with `~`. After a window resets, the gauge shows a dash until a new reading arrives. The counts update when Codex writes a new reading to a local session, so activity elsewhere may appear with a delay.
 
-For a custom Codex home, set `CODEX_HOME` in the Windows environment inherited by PowerToys and restart PowerToys. If Codex runs in WSL, the extension needs a Windows-accessible path to that Codex home. The extension reads the session files in place and works without a separate sign-in or status-line setup.
+If Codex runs in WSL or stores its logs elsewhere, set the Windows user environment variable `CODEX_USAGE_DOCK_SESSIONS_DIR` to the full path of the `sessions` directory, such as `\wsl.localhost\Ubuntu\home\<user>\.codex\sessions`, then restart PowerToys.
+
+If you previously set `CODEX_HOME` in Windows for the Dock, remove that override and fully restart ChatGPT Desktop. That variable changes Codex's home directory, including the path to its database. You can keep your `CODEX_HOME` settings inside WSL.
 
 ## Build and package
 

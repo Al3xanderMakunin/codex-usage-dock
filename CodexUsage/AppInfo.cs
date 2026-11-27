@@ -27,11 +27,10 @@ internal static class AppInfo
 
     public static string DataDirectory => Path.Combine(Home, ".codex-usage-dock");
 
-    public static string SessionsDirectory => Path.Combine(
-        Environment.GetEnvironmentVariable("CODEX_HOME") is { } custom && !string.IsNullOrWhiteSpace(custom)
+    public static string SessionsDirectory =>
+        Environment.GetEnvironmentVariable("CODEX_USAGE_DOCK_SESSIONS_DIR") is { } custom && !string.IsNullOrWhiteSpace(custom)
             ? custom
-            : Path.Combine(Home, ".codex"),
-        "sessions");
+            : Path.Combine(Home, ".codex", "sessions");
 
     public static string Glyph(int codepoint) => ((char)codepoint).ToString();
 
