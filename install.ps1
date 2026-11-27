@@ -4,23 +4,22 @@
 
 .DESCRIPTION
   Run from PowerShell:
-    irm https://raw.githubusercontent.com/Arihant25/usage-dock/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/Al3xanderMakunin/codex-usage-dock/main/install.ps1 | iex
 
   1. Downloads the .msix for your CPU and the signing certificate.
   2. Trusts the certificate for app installs (one UAC prompt, first install only).
      The package is self-signed, so Windows needs this before it will install it.
   3. Installs the package.
-  4. Optionally connects it to Claude Code's status line.
 #>
 $ErrorActionPreference = 'Stop'
-$repo = 'Arihant25/usage-dock'
+$repo = 'Al3xanderMakunin/codex-usage-dock'
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
 
 Write-Host "Usage Dock installer ($arch)" -ForegroundColor Cyan
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $release = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -Headers @{ 'User-Agent' = 'usage-dock-installer' }
-$msixAsset = $release.assets | Where-Object { $_.name -like "*_$arch.msix" } | Select-Object -First 1
-$cerAsset = $release.assets | Where-Object { $_.name -like '*.cer' } | Select-Object -First 1
+$msixAsset = $release.assets | Where-Object { $_.name -like "CodexUsageDock_*_$arch.msix" } | Select-Object -First 1
+$cerAsset = $release.assets | Where-Object { $_.name -eq 'UsageDock.cer' } | Select-Object -First 1
 if (-not $msixAsset -or -not $cerAsset) { throw "Release $($release.tag_name) has no $arch package." }
 
 $dir = Join-Path $env:TEMP "usage-dock-$($release.tag_name)"
@@ -43,12 +42,6 @@ Write-Host 'Installing package...'
 Add-AppxPackage -Path $msix -ForceApplicationShutdown
 Write-Host 'Installed.' -ForegroundColor Green
 
-$answer = Read-Host 'Connect to Claude Code now? This adds the usage bridge in front of your status line in ~/.claude/settings.json (Y/n)'
-if ($answer -notmatch '^[nN]') {
-  & claude-usage-bridge.exe --connect
-}
-
 Write-Host ''
-Write-Host 'Next: open Command Palette, reload it (or restart PowerToys), then right-click the Dock,'
-Write-Host 'choose Edit and add the "Usage Dock" band.'
-Write-Host 'To uninstall later, run "claude-usage-bridge.exe --disconnect" first.'
+Write-Host 'Reload Command Palette (or restart PowerToys), then right-click the Dock,'
+Write-Host 'choose Edit and add the "Codex Usage Dock" band.'

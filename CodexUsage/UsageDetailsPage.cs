@@ -4,11 +4,11 @@ using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 
-namespace ClaudeUsage;
+namespace CodexUsage;
 
 /// <summary>
 /// Flyout shown when a Dock item is clicked: both windows with bars, exact reset times,
-/// data freshness, and setup help when the bridge isn't connected yet.
+/// and data freshness.
 /// </summary>
 internal sealed partial class UsageDetailsPage : ContentPage
 {
@@ -20,13 +20,12 @@ internal sealed partial class UsageDetailsPage : ContentPage
         _service = service;
         Id = id;
         Name = "Details";
-        Title = "Claude Code usage";
+        Title = "Codex usage";
         Icon = IconHelpers.FromRelativePath(@"Assets\StoreLogo.png");
         _form = new DetailsForm(service);
         Commands =
         [
-            new CommandContextItem(new OpenUrlCommand("https://claude.ai/settings/usage")) { Title = "Open usage on claude.ai" },
-            new CommandContextItem(new ConnectCommand(connect: false)) { Title = "Disconnect from Claude Code" },
+            new CommandContextItem(new OpenUrlCommand(AppInfo.UsageUrl)) { Title = "Open Codex usage" },
         ];
         _service.Changed += _form.Refresh;
         _form.Refresh();
@@ -49,46 +48,16 @@ internal sealed partial class UsageDetailsPage : ContentPage
 
         public void Refresh() => DataJson = BuildData(_service.Latest).ToJsonString();
 
-        public override ICommandResult SubmitForm(string inputs, string data)
-        {
-            string? action = null;
-            try
-            {
-                action = JsonNode.Parse(string.IsNullOrEmpty(data) ? "{}" : data)?["action"]?.GetValue<string>();
-            }
-            catch
-            {
-            }
-
-            if (action == "connect")
-            {
-                string message;
-                try
-                {
-                    message = ClaudeSettingsConnector.Connect();
-                }
-                catch (Exception ex)
-                {
-                    message = $"Could not update Claude Code settings: {ex.Message}";
-                }
-
-                Refresh();
-                return CommandResult.ShowToast(message);
-            }
-
-            return CommandResult.KeepOpen();
-        }
+        public override ICommandResult SubmitForm(string inputs, string data) => CommandResult.KeepOpen();
     }
 
     private static JsonObject BuildData(UsageSnapshot? snap)
     {
-        var connected = ClaudeSettingsConnector.IsConnected();
         var hasData = snap is not null && (snap.FiveHour is not null || snap.Weekly is not null);
         var data = new JsonObject
         {
-            ["hasData"] = hasData,
-            ["needsSetup"] = !hasData && !connected,
-            ["waiting"] = !hasData && connected,
+            ["waiting"] = !hasData,
+            ["usageUrl"] = AppInfo.UsageUrl,
             ["fiveHour"] = Window(snap?.FiveHour),
             ["weekly"] = Window(snap?.Weekly),
         };
@@ -96,7 +65,7 @@ internal sealed partial class UsageDetailsPage : ContentPage
         if (snap is not null)
         {
             var age = DateTimeOffset.Now - snap.UpdatedAt;
-            data["updated"] = $"Updated {Ago(age)} from Claude Code";
+            data["updated"] = $"Updated {Ago(age)} from Codex";
             data["stale"] = UsageText.IsStale(snap);
         }
 
@@ -110,11 +79,12 @@ internal sealed partial class UsageDetailsPage : ContentPage
             return null;
         }
 
-        var pct = UsageText.EffectivePercent(w);
+        var pct = Math.Round(w.Percent);
+        var expired = UsageText.HasReset(w);
         return new JsonObject
         {
-            ["percent"] = $"{pct.ToString(CultureInfo.CurrentCulture)}%",
-            ["bar"] = Bar(pct),
+            ["percent"] = expired ? "—" : $"{pct.ToString(CultureInfo.CurrentCulture)}%",
+            ["bar"] = expired ? null : Bar(pct),
             ["resets"] = UsageText.ResetLine(w),
         };
     }
@@ -146,20 +116,11 @@ internal sealed partial class UsageDetailsPage : ContentPage
       "body": [
         {
           "type": "Container",
-          "$when": "${needsSetup}",
-          "items": [
-            { "type": "TextBlock", "text": "Not connected to Claude Code", "weight": "bolder", "size": "medium" },
-            { "type": "TextBlock", "wrap": true, "isSubtle": true,
-              "text": "Usage Dock reads your limits from Claude Code's status line. Connecting adds a small bridge in front of your existing status line command in ~/.claude/settings.json (or $CLAUDE_CONFIG_DIR). Your current status line keeps working. Disconnect before uninstalling." }
-          ]
-        },
-        {
-          "type": "Container",
           "$when": "${waiting}",
           "items": [
-            { "type": "TextBlock", "text": "Waiting for Claude Code", "weight": "bolder", "size": "medium" },
+            { "type": "TextBlock", "text": "Waiting for Codex", "weight": "bolder", "size": "medium" },
             { "type": "TextBlock", "wrap": true, "isSubtle": true,
-              "text": "Connected. Usage appears after your next Claude Code response. Limits are only reported for Claude Pro and Max subscriptions." }
+              "text": "Send a message in Codex on this PC. Usage appears when Codex records subscription limits in its local session logs." }
           ]
         },
         {
@@ -169,11 +130,11 @@ internal sealed partial class UsageDetailsPage : ContentPage
           "items": [
             { "type": "ColumnSet", "columns": [
               { "type": "Column", "width": "stretch", "verticalContentAlignment": "bottom", "items": [
-                { "type": "TextBlock", "text": "Current session", "weight": "bolder" },
+                { "type": "TextBlock", "text": "5-hour limit", "weight": "bolder" },
                 { "type": "TextBlock", "text": "5-hour window", "isSubtle": true, "size": "small", "spacing": "none" } ] },
               { "type": "Column", "width": "auto", "items": [
                 { "type": "TextBlock", "text": "${fiveHour.percent}", "size": "extraLarge", "weight": "bolder" } ] } ] },
-            { "type": "Image", "url": "${fiveHour.bar}", "size": "stretch", "height": "8px", "spacing": "small" },
+            { "type": "Image", "$when": "${fiveHour.bar != null}", "url": "${fiveHour.bar}", "size": "stretch", "height": "8px", "spacing": "small" },
             { "type": "TextBlock", "text": "${fiveHour.resets}", "isSubtle": true, "size": "small", "spacing": "small" }
           ]
         },
@@ -185,10 +146,10 @@ internal sealed partial class UsageDetailsPage : ContentPage
             { "type": "ColumnSet", "columns": [
               { "type": "Column", "width": "stretch", "verticalContentAlignment": "bottom", "items": [
                 { "type": "TextBlock", "text": "Weekly", "weight": "bolder" },
-                { "type": "TextBlock", "text": "7-day window, all models", "isSubtle": true, "size": "small", "spacing": "none" } ] },
+                { "type": "TextBlock", "text": "7-day window", "isSubtle": true, "size": "small", "spacing": "none" } ] },
               { "type": "Column", "width": "auto", "items": [
                 { "type": "TextBlock", "text": "${weekly.percent}", "size": "extraLarge", "weight": "bolder" } ] } ] },
-            { "type": "Image", "url": "${weekly.bar}", "size": "stretch", "height": "8px", "spacing": "small" },
+            { "type": "Image", "$when": "${weekly.bar != null}", "url": "${weekly.bar}", "size": "stretch", "height": "8px", "spacing": "small" },
             { "type": "TextBlock", "text": "${weekly.resets}", "isSubtle": true, "size": "small", "spacing": "small" }
           ]
         },
@@ -199,14 +160,13 @@ internal sealed partial class UsageDetailsPage : ContentPage
           "spacing": "medium",
           "items": [
             { "type": "TextBlock", "wrap": true, "size": "small",
-              "text": "These numbers may be out of date (shown with ~ in the Dock). Usage from claude.ai or the desktop app counts toward the same limits but only shows up here after your next Claude Code response." }
+              "text": "The latest local reading is over an hour old. Use Codex to refresh the numbers." }
           ]
         },
         { "type": "TextBlock", "$when": "${updated != null}", "text": "${updated}", "isSubtle": true, "size": "small", "spacing": "medium" }
       ],
       "actions": [
-        { "type": "Action.Submit", "$when": "${needsSetup}", "title": "Connect to Claude Code", "data": { "action": "connect" } },
-        { "type": "Action.OpenUrl", "$when": "${hasData}", "title": "Open usage on claude.ai", "url": "https://claude.ai/settings/usage" }
+        { "type": "Action.OpenUrl", "title": "Open Codex usage", "url": "${usageUrl}" }
       ]
     }
     """;

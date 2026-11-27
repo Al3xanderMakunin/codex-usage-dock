@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 
-namespace ClaudeUsage;
+namespace CodexUsage;
 
 internal enum Severity
 {
@@ -24,7 +24,7 @@ internal static class GaugeIcons
     public const int CriticalAt = 95;
 
     private static readonly ConcurrentDictionary<string, IconInfo> Cache = new();
-    private static readonly string Dir = Path.Combine(Path.GetDirectoryName(AppInfo.DataFile)!, "icons");
+    private static readonly string Dir = Path.Combine(AppInfo.DataDirectory, "icons");
 
     public static Severity SeverityOf(double percent) =>
         percent >= CriticalAt ? Severity.Critical : percent >= WarningAt ? Severity.Warning : Severity.Normal;

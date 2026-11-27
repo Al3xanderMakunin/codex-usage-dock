@@ -21,20 +21,23 @@ param(
   # Microsoft Store build: uses the identity Partner Center assigned, leaves the package unsigned
   # (the Store signs it), builds both architectures and bundles them for upload.
   [switch]$Store,
-  [string]$StoreIdentityName = 'ArihantTripathy.UsageDockforClaudeCode',
-  [string]$StorePublisher = 'CN=72BAF5FF-24DB-44E5-91AB-EF577484B99F',
-  [string]$StorePublisherDisplayName = 'Arihant Tripathy'
+  [string]$StoreIdentityName,
+  [string]$StorePublisher,
+  [string]$StorePublisherDisplayName
 )
 $ErrorActionPreference = 'Stop'
 $root    = $PSScriptRoot
 
+if ($Store -and (!$StoreIdentityName -or !$StorePublisher -or !$StorePublisherDisplayName)) {
+  throw 'Provide StoreIdentityName, StorePublisher and StorePublisherDisplayName from Partner Center.'
+}
 if ($Store -and -not $env:USAGEDOCK_STORE_CHILD) {
   if ($Version -notmatch '\.0$') { throw 'Store package versions must end in .0' }
   $env:USAGEDOCK_STORE_CHILD = '1'
   try {
     $parts = foreach ($p in 'x64', 'arm64') {
-      & $PSCommandPath -Version $Version -Platform $p -Store | Out-Host
-      Join-Path $root "out/$p/ClaudeUsageDock_${Version}_$p.msix"
+      & $PSCommandPath -Version $Version -Platform $p -Store -StoreIdentityName $StoreIdentityName -StorePublisher $StorePublisher -StorePublisherDisplayName $StorePublisherDisplayName | Out-Host
+      Join-Path $root "out/$p/CodexUsageDock_${Version}_$p.msix"
     }
   } finally { Remove-Item Env:USAGEDOCK_STORE_CHILD }
   $storeOut = Join-Path $root 'out/store'
@@ -53,10 +56,10 @@ if ($Store -and -not $env:USAGEDOCK_STORE_CHILD) {
   Write-Host "Store upload: $upload"
   return
 }
-$proj    = Join-Path $root 'ClaudeUsage/ClaudeUsage.csproj'
+$proj    = Join-Path $root 'CodexUsage/CodexUsage.csproj'
 $out     = Join-Path $root "out/$Platform"
 $layout  = Join-Path $out 'layout'
-$msix    = Join-Path $out "ClaudeUsageDock_${Version}_$Platform.msix"
+$msix    = Join-Path $out "CodexUsageDock_${Version}_$Platform.msix"
 
 # 1. Publish
 Remove-Item $layout -Recurse -Force -ErrorAction SilentlyContinue
@@ -65,9 +68,9 @@ if ($LASTEXITCODE) { throw 'dotnet publish failed' }
 Get-ChildItem $layout -Recurse -Filter *.pdb | Remove-Item
 
 # 2. AppxManifest.xml (fill the tokens Visual Studio's MSIX tooling normally fills)
-$manifest = Get-Content (Join-Path $root 'ClaudeUsage/Package.appxmanifest') -Raw
+$manifest = Get-Content (Join-Path $root 'CodexUsage/Package.appxmanifest') -Raw
 $manifest = $manifest `
-  -replace '\$targetnametoken\$', 'ClaudeUsage' `
+  -replace '\$targetnametoken\$', 'CodexUsage' `
   -replace '\$targetentrypoint\$', 'Windows.FullTrustApplication' `
   -replace '<Resource Language="x-generate"\s*/>', '<Resource Language="en-us" />' `
   -replace '(<Identity[^>]*?Version=")[^"]+"', "`${1}$Version`" ProcessorArchitecture=`"$Platform`"" `

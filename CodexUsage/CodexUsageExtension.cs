@@ -3,15 +3,15 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.CommandPalette.Extensions;
 
-namespace ClaudeUsage;
+namespace CodexUsage;
 
-[Guid("48C292C7-73DB-49F4-88AF-3017AB6ECC09")]
-public sealed partial class ClaudeUsageExtension : IExtension, IDisposable
+[Guid("448CDE08-4F58-4185-A090-0708B91BD219")]
+public sealed partial class CodexUsageExtension : IExtension, IDisposable
 {
     private readonly ManualResetEvent _extensionDisposedEvent;
-    private readonly ClaudeUsageCommandsProvider _provider = new();
+    private readonly CodexUsageCommandsProvider _provider = new();
 
-    public ClaudeUsageExtension(ManualResetEvent extensionDisposedEvent)
+    public CodexUsageExtension(ManualResetEvent extensionDisposedEvent)
     {
         _extensionDisposedEvent = extensionDisposedEvent;
     }
